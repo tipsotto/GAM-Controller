@@ -1,0 +1,13 @@
+GAM Controller
+
+Provides a simple to use PowerShell menu interface for the Google Apps Manager "GAM"
+
+Supports:
+* User Management
+* Email Settings
+* Domain Settings
+* Generating Reports (csv)
+
+More to come ...
+
+Read more about GAM here: http://code.google.com/p/google-apps-manager/
