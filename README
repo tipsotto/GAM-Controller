@@ -33,5 +33,6 @@ Tested with GAM v2.5
 You need "gam" for this script to work.
 Read more about GAM here: http://code.google.com/p/google-apps-manager/
 
-IMPORTANT NOTE: Be sure to set the path to gam.exe in script 				>> line 7
-				It is useful to set default password variable in script		>> line 8
+IMPORTANT NOTE:
+Be sure to set the path to gam.exe in script on line 7
+It is useful to set default password variable in script on line 8
