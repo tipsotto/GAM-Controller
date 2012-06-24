@@ -74,28 +74,47 @@ Function UserManagement
 	{
 		Write-Host "Create New Users in Bulk`n(Follow this syntax: firstname1,lastname1,username1,password1;firstname2,lastname2,username2,password2)" -ForegroundColor Cyan
 		Write-Host "(type `"\cancel`" to cancel, type `"\d`" in password field for default password)" -ForegroundColor Cyan
-		Write-Host -NoNewLine "`nUsers to Create: " -ForegroundColor Cyan; $usersInfo = Read-Host
-		if ($usersInfo.Replace(" ", "") -ne "\cancel")
+		Write-Host -NoNewLine "`nUsers to Create: " -ForegroundColor Cyan; $script:usersInfo = Read-Host
+		$script:usersInfo = $usersInfo.Replace(" ", "")
+		if ($usersInfo -ne "\cancel")
 		{
 			Write-Host "Processing ..."
-			$usersInfo = $usersInfo.split(";")
+			if ($usersInfo.substring($usersInfo.length-1) -eq ";") {$script:usersInfo = $usersInfo -replace ".$"}
+			$script:usersInfo = $usersInfo.split(";")
 			foreach ($user in $usersInfo)
 			{
 				$user = $user.split(",")
 				$fname = $user[0]; $lname = $user[1]; $uname = $user[2]; $script:passd = $user[3]
 				if ($script:passd -eq "\d") {$script:passd = "$defaultPassword"}
-				gam create user $uname firstname $fname lastname $lname password $script:passd nohash agreedtoterms on
+				gam create user $uname firstname $fname lastname $lname password $passd nohash agreedtoterms on
 			}
 		}
 		else {echo "`n---User creation was Cancelled. No users were created, nothing was changed.`n"}
 	}
 	
-	Function DeleteUser				# DELETE A USER
+	Function DeleteUser				# DELETE USER(s)
 	{
-		Write-Host "Delete an Existing User" -ForegroundColor Cyan
-		Write-Host -NoNewLine "(Leave blank to cancel) Username: " -ForegroundColor Magenta; $script:userName = Read-Host
-		if (($userName -ne $Null) -and ($userName -ne "")) {gam delete user $userName}
-		else {echo "`n---Username blank. No user was deleted, nothing was changed.`n"}
+		Write-Host "Delete Existing User(s)" -ForegroundColor Cyan
+		Write-Host "(for more than one user, use this syntax: -bulk:username1;username2;username3)" -ForegroundColor Cyan
+		Write-Host -NoNewLine "(Leave blank to cancel) Username(s): " -ForegroundColor Magenta; $script:userNames = Read-Host
+		if (($userNames -ne $Null) -and ($userNames -ne ""))
+		{
+			$script:userNames = $script:userNames.Replace(" ", "")
+			if ($userNames.substring(0,1) -eq "-")
+			{
+				if ($userNames.substring(0,6) -eq "-bulk:")
+				{
+					$script:userNames = $userNames.substring(6,$userNames.length-6)
+					$script:userNames = $script:userNames.split(";")
+					foreach ($user in $userNames)
+					{
+						gam delete user $user
+					}
+				}
+			}
+			else {gam delete user $userNames}
+		}
+		else {echo "`n---Input blank. No user was deleted, nothing was changed.`n"}
 	}
 	
 	Function GetUserInfo			# GET A USER'S INFO
@@ -109,7 +128,7 @@ Function UserManagement
 	if ($umchoice -eq 4) {$script:umchoice = -1} 				# GO BACK TO MAIN MENU
 	elseif ($umchoice -eq 0) {CreateUser; UserManagement}		# CREATE USER
 	elseif ($umchoice -eq 1) {BulkCreateUsers; UserManagement}	# BULK CREATE USERS
-	elseif ($umchoice -eq 2) {DeleteUser; UserManagement}		# DELETE USER
+	elseif ($umchoice -eq 2) {DeleteUser; UserManagement}		# DELETE USER(s)
 	elseif ($umchoice -eq 3) {GetUserInfo; UserManagement}		# GET USER INFO
 }
 
@@ -227,7 +246,8 @@ Function DomainSettings
 ### SEE WIKI HERE FOR MORE INFO: ( http://code.google.com/p/google-apps-manager/wiki/ExamplesCSV )
 Function Reports
 {
-	$script:rchoice = select-item -Caption "*** Reports ***" -Message "What do you want to do: " -choice "Print All &Users", "Print All &Groups", "Print All &Nicknames", "&Other Reports", "&Cancel"  -default 4; echo ""
+	$script:rchoice = select-item -Caption "*** Reports ***" -Message "What do you want to do: " -choice "Print All &Users", "Print All &Groups", 
+	"Print All &Nicknames", "Print All Organizational &Units", "Print All &Resource Calendars", "&Other Reports", "&Cancel"  -default 6; echo ""
 	
 	Function PrintAllUsers							# REPORT ALL USERS TO CSV
 	{
@@ -256,17 +276,93 @@ Function Reports
 		else {echo "`n---Request Cancelled.`n"}
 	}
 	
-	Function OtherReports							# OTHER REPORTS
+	Function PrintAllOrgUnits							# REPORT ALL ORG UNITS TO CSV
 	{
-		$script:orchoice = select-item -Caption "*** Other Reports ***" -Message "Which report do you want to run: " -choice "&Accounts", "Acti&vity", "&Disk Space", "&Email Clients", "&Summary", "&Cancel"  -default 5
-		
+		Write-Host "Printing All Organizational Units...`nReport will be saved in a .csv file" -ForegroundColor Cyan
+		Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\orgunits.csv]"
+		Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+		if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam print orgs name description parent inherit > $csvpath}
+		else {echo "`n---Request Cancelled.`n"}
 	}
 	
-	if ($rchoice -eq 4) {$script:rchoice = -1}		# GO BACK TO MAIN MENU
-	elseif ($rchoice -eq 0) {PrintAllUsers}			# PRINT ALL USERS TO .csv FILE
-	elseif ($rchoice -eq 1) {PrintAllGroups}		# PRINT ALL GROUPS TO .csv FILE
-	elseif ($rchoice -eq 2) {PrintAllNicknames}		# PRINT ALL NICKNAMES TO .csv FILE
-	elseif ($rchoice -eq 3) {OtherReports}			# OTHER REPORTS
+	Function PrintAllResCals							# REPORT ALL RESOURCE CALENDARS TO CSV
+	{
+		Write-Host "Printing All Resource Calendars...`nReport will be saved in a .csv file" -ForegroundColor Cyan
+		Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\resourcecals.csv]"
+		Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+		if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam print resources id description email > $csvpath}
+		else {echo "`n---Request Cancelled.`n"}
+	}
+	
+	Function OtherReports							# OTHER REPORTS
+	{
+		$script:orchoice = select-item -Caption "*** Other Reports ***`n`nNote: Allow 24-48 hours for changes to show on these reports." -Message "Which report do you want to run: " -choice "&Accounts", "Acti&vity", "&Disk Space", "&Email Clients", "&Summary", "&Cancel"  -default 5
+		
+		Function AccountsReport
+		{
+			Write-Host "Printing Accounts Report..`nReport will be saved in a .csv file" -ForegroundColor Cyan
+			Write-Host -NoNewLine "(Leave blank to get most recent) Type in date to get report for that day.[Format: YYYY-MM-DD]: "; $date = Read-Host
+			Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\accountsreport.csv]"
+			Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+			if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam report accounts $date > $csvpath}
+			else {echo "`n---Request Cancelled.`n"}
+		}
+		
+		Function ActivityReports
+		{
+			Write-Host "Printing Activity Report..`nReport will be saved in a .csv file" -ForegroundColor Cyan
+			Write-Host -NoNewLine "(Leave blank to get most recent) Type in date to get report for that day.[Format: YYYY-MM-DD]: "; $date = Read-Host
+			Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\activityreport.csv]"
+			Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+			if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam report activity $date > $csvpath}
+			else {echo "`n---Request Cancelled.`n"}
+		}
+		
+		Function DiskSpaceReport
+		{
+			Write-Host "Printing Disk Space Report..`nReport will be saved in a .csv file" -ForegroundColor Cyan
+			Write-Host -NoNewLine "(Leave blank to get most recent) Type in date to get report for that day.[Format: YYYY-MM-DD]: "; $date = Read-Host
+			Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\diskspacereport.csv]"
+			Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+			if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam report disk_space $date > $csvpath}
+			else {echo "`n---Request Cancelled.`n"}
+		}
+		
+		Function EmailClientsReport
+		{
+			Write-Host "Printing Email Clients Report..`nReport will be saved in a .csv file" -ForegroundColor Cyan
+			Write-Host -NoNewLine "(Leave blank to get most recent) Type in date to get report for that day.[Format: YYYY-MM-DD]: "; $date = Read-Host
+			Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\emailclientsreport.csv]"
+			Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+			if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam report email_clients $date > $csvpath}
+			else {echo "`n---Request Cancelled.`n"}
+		}
+		
+		Function SummaryReport
+		{
+			Write-Host "Printing Summary Report..`nReport will be saved in a .csv file" -ForegroundColor Cyan
+			Write-Host -NoNewLine "(Leave blank to get most recent) Type in date to get report for that day.[Format: YYYY-MM-DD]: "; $date = Read-Host
+			Write-Host "Where do you want to save report? [ex. C:\Users\user\Desktop\summaryreport.csv]"
+			Write-Host -NoNewLine "(Leave blank to cancel): "; $csvpath = Read-Host
+			if (($csvpath -ne $Null) -and ($csvpath -ne "")) {gam report summary $date > $csvpath}
+			else {echo "`n---Request Cancelled.`n"}
+		}
+		
+		if ($orchoice -eq 5) {$script:orchoice = -1}	# GO BACK TO MAIN MENY
+		elseif ($orchoice -eq 0) {AccountsReport}		# PRINT ACCOUNTS REPORT TO .csv FILE
+		elseif ($orchoice -eq 1) {ActivityReports}		# PRINT ACTIVITY REPORT TO .csv FILE
+		elseif ($orchoice -eq 2) {DiskSpaceReport}		# PRINT DISK SPACE REPORT TO .csv FILE
+		elseif ($orchoice -eq 3) {EmailClientsReport}	# PRINT EMAIL CLIENTS REPORT TO .csv FILE
+		elseif ($orchoice -eq 4) {SummaryReport}		# PRINT SUMMARY REPORT TO .csv FILE
+	}
+	
+	if ($rchoice -eq 6) {$script:rchoice = -1}			# GO BACK TO MAIN MENU
+	elseif ($rchoice -eq 0) {PrintAllUsers}				# PRINT ALL USERS TO .csv FILE
+	elseif ($rchoice -eq 1) {PrintAllGroups}			# PRINT ALL GROUPS TO .csv FILE
+	elseif ($rchoice -eq 2) {PrintAllNicknames}			# PRINT ALL NICKNAMES TO .csv FILE
+	elseif ($rchoice -eq 3) {PrintAllOrgUnits}			# PRINT ALL ORGANIZATIONAL UNITS TO .csv FILE
+	elseif ($rchoice -eq 4) {PrintAllResCals}			# PRINT ALL RESOURCE CALENDARS TO .csv FILE
+	elseif ($rchoice -eq 5) {OtherReports}				# OTHER REPORTS
 }
 
 ### SELECT ITEM FUNCTION USED FOR MENUS ###

@@ -4,11 +4,34 @@ Provides a simple to use PowerShell menu interface for the Google Apps Manager "
 
 Supports:
 * User Management
+	- Creating a user
+	- Creating users in bulk
+	- Getting user info
+	- Deleting user(s)
 * Email Settings
+	- Delegating email accounts
+	- Enabling/Disabling IMAP
+	- Disbale WebClips
 * Domain Settings
-* Generating Reports (csv)
+	- Retrieve Domain Settings
+	- Enabling/Disabling User Email Migration API 
+* Generating Reports - Print Reports to a .csv file showing info like:
+	- Users
+	- Groups
+	- Nicknames
+	- Organizaional Units
+	- Resource Calendars
+	- Accounts
+	- Activity
+	- Disk Space
+	- Email Clients
+	- Summary
 
 More to come ...
 
 Tested with GAM v2.5
+You need "gam" for this script to work.
 Read more about GAM here: http://code.google.com/p/google-apps-manager/
+
+IMPORTANT NOTE: Be sure to set the path to gam.exe in script 				>> line 7
+				It is useful to set default password variable in script		>> line 8
