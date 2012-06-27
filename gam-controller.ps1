@@ -1,11 +1,25 @@
 # GAM-Controller.ps1
 # Created by: 	TIPS
-# Version: 		1.0
+# Version: 		2.5.1.0
+# Tested with GAM v 2.5
 clear
 
-# VARIBALE TO SET
-$execPath = "C:\gam\gam.exe"							# SET THIS TO: "\path\to\gam.exe"
-$defaultPassword = ""									# DEFAULT PASSWORD TO USE WHEN CREATING USERS (THIS WILL BE USED WHEN YOU TYPE "\d" FOR PASSWORD IN USER CREATION)
+# VARIBALES TO SET
+$execPath = "C:\gam\gam.exe"					# SET THIS TO: "\path\to\gam.exe"
+$defaultPassword = ""							# DEFAULT PASSWORD TO USE WHEN CREATING USERS (THIS WILL BE USED WHEN YOU TYPE "\d" FOR PASSWORD IN USER CREATION)
+# EXECUTED AFTER A USER IS CREATED. YOU MAY LEAVE THIS BLANK. EXAMPLE CODE IS SHOWN BELOW.
+Function PostUCreation ($username)
+{
+	#echo "Running Post User Creation Setup on $username..."
+	#gam user $username webclips off
+	#gam user $username imap off
+	#gam user $username profile unshared
+	#gam update group Employees add member $username
+	#gam user $username delete label "Misc"
+	#gam user $username delete label "Follow up"
+	#gam user $username delete label "Priority"
+	#echo ""
+}
 
 #***********************************************************************************************************************************************************************************************************************
 # TEST EXECUTABLE PATH
@@ -13,7 +27,7 @@ $execExists = Test-Path $execPath
 if ($execExists -eq $False) {Write-Host "Error: Check line 7`n>> gam.exe does not exist at path specified by execPath variable.`n>> Currently execPath = $execPath" -ForegroundColor Red; exit 1}
 Set-Alias gam $execPath
 # TEST DEFAULT PASSWORD SET?
-if ($defaultPassword -eq "") {Write-Host -NoNewLine "Warning: " -ForeGroundColor Yellow; Write-Host "Check line 8. `"`$defaultPassword`" variable not set." -ForeGroundColor Gray}
+if ($defaultPassword -eq "") {Write-Warning "Warning: Check line 8. `"`$defaultPassword`" variable not set."}
 
 $start = 0
 
@@ -37,7 +51,7 @@ Function Begin
 ### SEE WIKI HERE FOR MORE INFO: ( http://code.google.com/p/google-apps-manager/wiki/ExamplesProvisioning )
 Function UserManagement
 {
-	$script:umchoice = select-item -Caption "*** User Management ***" -Message "What do you want to do: " -choice "C&reate User","&Bulk Create Users", "&Delete User(s)", "Get User &Info", "&Cancel"  -default 4; echo ""
+	$script:umchoice = select-item -Caption "*** User Management ***" -Message "What do you want to do: " -choice "C&reate User","&Bulk Create Users", "&Import Users from csv file", "&Delete User(s)", "Get User &Info", "&Cancel"  -default 5; echo ""
 	
 	Function CreateUser				# CREATE A USER
 	{
@@ -64,7 +78,7 @@ Function UserManagement
 					Write-Host "Password does not match! Repeat" -ForegroundColor Red
 					AskPassword
 				}
-			if ($password -eq $confpassword) {gam create user $username firstname $firstName lastname $lastName password $password nohash agreedtoterms on; break} # IF PASS AND CONF MATCH
+			if ($password -eq $confpassword) {gam create user $username firstname $firstName lastname $lastName password $password nohash agreedtoterms on; PostUCreation $username; break} # IF PASS AND CONF MATCH
 			else {echo "`n---Password does not match. User was not created, nothing was changed.`n"}
 		}
 		if ($password -eq "") {echo "`n---Password empty. User was not created, nothing was changed. Cancelled.`n"}
@@ -90,6 +104,30 @@ Function UserManagement
 			}
 		}
 		else {echo "`n---User creation was Cancelled. No users were created, nothing was changed.`n"}
+	}
+	
+	Function ImportUserCsv
+	{
+		Write-Host "Create New Users from a csv File`n(csv file must have this header: firstname,lastname,username,password)" -ForegroundColor Cyan
+		Write-Host "(type `"\cancel`" to cancel, assign `"\d`" to password field in csv for default password)" -ForegroundColor Cyan
+		Write-Host -NoNewLine "`nPath to csv file: " -ForegroundColor Cyan; $script:csvPath = Read-Host
+		if ($csvPath -eq "\cancel") {echo "`n---User creation was Cancelled. No users were created, nothing was changed.`n"}
+		else
+		{
+			$pathExists = Test-Path $csvPath
+			if ($pathExists -eq $False) {Write-Host "--- Path to csv was not found." -ForeGroundColor Red;echo "---User creation was Cancelled. No users were created, nothing was changed.`n"}
+			else
+			{
+				echo "Processing ..."
+				$script:csvInfo = Import-Csv $csvPath
+				foreach ($entry in $csvInfo)
+				{
+					if ($entry.password -eq "\d") {gam create user $entry.username firstname $entry.firstname lastname $entry.lastname password $defaultPassword nohash agreedtoterms on changepassword on}
+					else {gam create user $entry.username firstname $entry.firstname lastname $entry.lastname password $entry.password nohash agreedtoterms on changepassword on}
+					PostUCreation $entry.username
+				}
+			}
+		}
 	}
 	
 	Function DeleteUser				# DELETE USER(s)
@@ -125,11 +163,12 @@ Function UserManagement
 		else {echo "`n---Request Cancelled.`n"}
 	}
 	# USER MANAGEMENT OPTION REDIRECTOR
-	if ($umchoice -eq 4) {$script:umchoice = -1} 				# GO BACK TO MAIN MENU
+	if ($umchoice -eq 5) {$script:umchoice = -1} 				# GO BACK TO MAIN MENU
 	elseif ($umchoice -eq 0) {CreateUser; UserManagement}		# CREATE USER
 	elseif ($umchoice -eq 1) {BulkCreateUsers; UserManagement}	# BULK CREATE USERS
-	elseif ($umchoice -eq 2) {DeleteUser; UserManagement}		# DELETE USER(s)
-	elseif ($umchoice -eq 3) {GetUserInfo; UserManagement}		# GET USER INFO
+	elseif ($umchoice -eq 2) {ImportUserCsv; UserManagement}	# IMPORT USERS TO CREATE FROM CSV
+	elseif ($umchoice -eq 3) {DeleteUser; UserManagement}		# DELETE USER(s)
+	elseif ($umchoice -eq 4) {GetUserInfo; UserManagement}		# GET USER INFO
 }
 
 ### EMAIL SETINGS
@@ -209,7 +248,7 @@ Function EmailSettings
 		switch ($users)
 		{
 			"\cancel" {echo "`n---Request Cancelled. Nothing was changed."; EmailSettings}
-			"\all" {echo "Disabling Web ClipsS for all users..."; gam update all users webclips off}
+			"\all" {echo "Disabling Web Clips for all users..."; gam all users webclips off}
 			default {
 						$users = $users.split(",")
 						foreach ($user in $users) {gam user $users webclips off}

@@ -6,6 +6,7 @@ Supports:
 * User Management
 	- Creating a user
 	- Creating users in bulk
+	- Import Users from a csv file
 	- Getting user info
 	- Deleting user(s)
 * Email Settings
